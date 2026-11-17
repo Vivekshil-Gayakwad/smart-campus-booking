@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faculty Dashboard - Campus Booking</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <nav class="navbar">
+        <a href="index.html" class="logo">📚 Campus Booking</a>
+        <div class="nav-links">
+            <a href="#" onclick="logout()">Logout</a>
+        </div>
+    </nav>
+
+    <div class="dashboard">
+
+        <!-- Welcome Bar -->
+        <div class="welcome-bar">
+            <h3>Welcome, Prof. <span id="facultyName">Faculty</span>!</h3>
+            <span id="facultyInfo">Faculty Dashboard</span>
+        </div>
+
+        <!-- Booking Form -->
+        <div class="booking-form">
+            <h3>📅 Book a Resource</h3>
+            <div id="booking-alert"></div>
+            <form id="bookingForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Select Resource</label>
+                        <select id="resource_id" required>
+                            <option value="">-- Choose Resource --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Booking Date</label>
+                        <input type="date" id="booking_date" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Time Slot</label>
+                        <select id="time_slot" required>
+                            <option value="">-- Choose Slot --</option>
+                            <option value="8:00 AM - 9:00 AM">8:00 AM - 9:00 AM</option>
+                            <option value="9:00 AM - 10:00 AM">9:00 AM - 10:00 AM</option>
+                            <option value="10:00 AM - 11:00 AM">10:00 AM - 11:00 AM</option>
+                            <option value="11:00 AM - 12:00 PM">11:00 AM - 12:00 PM</option>
+                            <option value="12:00 PM - 1:00 PM">12:00 PM - 1:00 PM</option>
+                            <option value="2:00 PM - 3:00 PM">2:00 PM - 3:00 PM</option>
+                            <option value="3:00 PM - 4:00 PM">3:00 PM - 4:00 PM</option>
+                            <option value="4:00 PM - 5:00 PM">4:00 PM - 5:00 PM</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Number of Attendees</label>
+                        <input type="number" id="num_attendees" placeholder="e.g. 50" min="1" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Purpose</label>
+                    <input type="text" id="purpose" placeholder="e.g. Lecture, Lab Session, Faculty Meeting, Seminar" required>
+                </div>
+                <button type="submit" class="btn btn-navy btn-small" style="width:auto; margin-top:10px;">Submit Booking</button>
+            </form>
+        </div>
+
+        <!-- Bookings Table -->
+        <div class="table-container">
+            <h3>📋 My Bookings</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Resource</th>
+                        <th>Type</th>
+                        <th>Location</th>
+                        <th>Date</th>
+                        <th>Time Slot</th>
+                        <th>Purpose</th>
+                        <th>Attendees</th>
+                        <th>Status</th>
+                        <th>Admin Remark</th>
+                    </tr>
+                </thead>
+                <tbody id="bookingsTable">
+                    <tr><td colspan="9" style="text-align:center; padding:30px; color:#888;">Loading bookings...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+
+    <script>
+        // Check login
+        const faculty = JSON.parse(localStorage.getItem('faculty'));
+        if (!faculty) window.location.href = 'faculty-login.html';
+
+        document.getElementById('facultyName').textContent = faculty.full_name;
+        document.getElementById('facultyInfo').textContent = faculty.designation + ' | ' + faculty.department + ' Department';
+
+        // Set min date to today
+        document.getElementById('booking_date').min = new Date().toISOString().split('T')[0];
+
+        // Load Resources (Faculty-only)
+        async function loadResources() {
+            const res = await fetch('/api/faculty/resources');
+            const data = await res.json();
+            if (data.success) {
+                const select = document.getElementById('resource_id');
+                data.resources.forEach(r => {
+                    select.innerHTML += `<option value="${r.resource_id}">${r.resource_name} (${r.resource_type}) - Capacity: ${r.capacity}</option>`;
+                });
+            }
+        }
+
+        // Load Bookings
+        async function loadBookings() {
+            const res = await fetch(`/api/faculty/bookings/${faculty.faculty_id}`);
+            const data = await res.json();
+            const tbody = document.getElementById('bookingsTable');
+
+            if (data.success && data.bookings.length > 0) {
+                tbody.innerHTML = data.bookings.map(b => `
+                    <tr>
+                        <td>${b.resource_name}</td>
+                        <td>${b.resource_type}</td>
+                        <td>${b.location}</td>
+                        <td>${new Date(b.booking_date).toLocaleDateString()}</td>
+                        <td>${b.time_slot}</td>
+                        <td>${b.purpose}</td>
+                        <td>${b.num_attendees}</td>
+                        <td><span class="badge badge-${b.status.toLowerCase()}">${b.status}</span></td>
+                        <td>${b.admin_remark || '-'}</td>
+                    </tr>
+                `).join('');
+            } else {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:30px; color:#888;">No bookings yet</td></tr>';
+            }
+        }
+
+        // Submit Booking
+        document.getElementById('bookingForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const body = {
+                faculty_id: faculty.faculty_id,
+                resource_id: document.getElementById('resource_id').value,
+                booking_date: document.getElementById('booking_date').value,
+                time_slot: document.getElementById('time_slot').value,
+                purpose: document.getElementById('purpose').value,
+                num_attendees: document.getElementById('num_attendees').value
+            };
+
+            const res = await fetch('/api/faculty/booking', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                document.getElementById('booking-alert').innerHTML = 
+                    `<div class="alert alert-success">${data.message}</div>`;
+                document.getElementById('bookingForm').reset();
+                loadBookings();
+            } else {
+                document.getElementById('booking-alert').innerHTML = 
+                    `<div class="alert alert-error">${data.message}</div>`;
+            }
+
+            setTimeout(() => { document.getElementById('booking-alert').innerHTML = ''; }, 3000);
+        });
+
+        function logout() {
+            localStorage.removeItem('faculty');
+            window.location.href = 'index.html';
+        }
+
+        // Initialize
+        loadResources();
+        loadBookings();
+    </script>
+
+</body>
+</html>

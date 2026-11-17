@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Campus Booking</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <nav class="navbar">
+        <a href="index.html" class="logo">📚 Campus Booking</a>
+        <div class="nav-links">
+            <a href="#" id="tabAnalytics" onclick="showTab('analytics')" class="tab-link active-tab">Analytics</a>
+            <a href="#" id="tabBookings" onclick="showTab('bookings')" class="tab-link">Bookings</a>
+            <a href="#" onclick="logout()">Logout</a>
+        </div>
+    </nav>
+
+    <div class="dashboard">
+
+        <!-- Welcome Bar -->
+        <div class="welcome-bar">
+            <h3>Welcome, <span id="adminName">Admin</span>!</h3>
+            <span>Admin Dashboard</span>
+        </div>
+
+        <!-- ==================== ANALYTICS SECTION ==================== -->
+        <div id="analyticsSection">
+
+            <!-- Stats Cards -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalBookings">0</div>
+                    <div class="stat-label">Total Bookings</div>
+                </div>
+                <div class="stat-card stat-pending">
+                    <div class="stat-number" id="pendingCount">0</div>
+                    <div class="stat-label">Pending</div>
+                </div>
+                <div class="stat-card stat-approved">
+                    <div class="stat-number" id="approvedCount">0</div>
+                    <div class="stat-label">Approved</div>
+                </div>
+                <div class="stat-card stat-rejected">
+                    <div class="stat-number" id="rejectedCount">0</div>
+                    <div class="stat-label">Rejected</div>
+                </div>
+            </div>
+
+            <!-- Second Row Stats -->
+            <div class="stats-grid stats-grid-3">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalStudents">0</div>
+                    <div class="stat-label">Registered Students</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="totalFaculty">0</div>
+                    <div class="stat-label">Registered Faculty</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="totalResources">0</div>
+                    <div class="stat-label">Total Resources</div>
+                </div>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="analytics-row">
+                <!-- Top Resources -->
+                <div class="analytics-card">
+                    <h3>🏆 Most Booked Resources</h3>
+                    <div id="topResourcesList" class="bar-chart-container">
+                        <p style="color:#888; text-align:center; padding:20px;">No data yet</p>
+                    </div>
+                </div>
+
+                <!-- Recent Bookings -->
+                <div class="analytics-card">
+                    <h3>🕐 Recent Bookings</h3>
+                    <div id="recentBookingsList">
+                        <p style="color:#888; text-align:center; padding:20px;">No data yet</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== BOOKINGS SECTION ==================== -->
+        <div id="bookingsSection" style="display:none;">
+            <div class="table-container">
+                <h3>📋 All Booking Requests</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Type</th>
+                            <th>Booked By</th>
+                            <th>Resource</th>
+                            <th>Date</th>
+                            <th>Time Slot</th>
+                            <th>Purpose</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bookingsTable">
+                        <tr><td colspan="9" style="text-align:center; padding:30px; color:#888;">Loading bookings...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Check login
+        const admin = JSON.parse(localStorage.getItem('admin'));
+        if (!admin) window.location.href = 'admin-login.html';
+
+        document.getElementById('adminName').textContent = admin.full_name;
+
+        // Tab Switching
+        function showTab(tab) {
+            document.getElementById('analyticsSection').style.display = tab === 'analytics' ? 'block' : 'none';
+            document.getElementById('bookingsSection').style.display = tab === 'bookings' ? 'block' : 'none';
+            document.getElementById('tabAnalytics').classList.toggle('active-tab', tab === 'analytics');
+            document.getElementById('tabBookings').classList.toggle('active-tab', tab === 'bookings');
+            if (tab === 'bookings') loadBookings();
+            if (tab === 'analytics') loadAnalytics();
+        }
+
+        // ==================== ANALYTICS ====================
+
+        async function loadAnalytics() {
+            // Counts
+            const countRes = await fetch('/api/admin/analytics/counts');
+            const countData = await countRes.json();
+            if (countData.success) {
+                const c = countData.counts;
+                document.getElementById('totalBookings').textContent = c.total_bookings;
+                document.getElementById('pendingCount').textContent = c.pending;
+                document.getElementById('approvedCount').textContent = c.approved;
+                document.getElementById('rejectedCount').textContent = c.rejected;
+                document.getElementById('totalStudents').textContent = c.total_students;
+                document.getElementById('totalFaculty').textContent = c.total_faculty;
+                document.getElementById('totalResources').textContent = c.total_resources;
+            }
+
+            // Top Resources
+            const topRes = await fetch('/api/admin/analytics/top-resources');
+            const topData = await topRes.json();
+            const topDiv = document.getElementById('topResourcesList');
+            if (topData.success && topData.topResources.length > 0) {
+                const max = topData.topResources[0].total;
+                topDiv.innerHTML = topData.topResources.map(r => `
+                    <div class="bar-item">
+                        <div class="bar-label">${r.resource_name} <span style="color:#888;">(${r.resource_type})</span></div>
+                        <div class="bar-track">
+                            <div class="bar-fill" style="width: ${(r.total / max) * 100}%"></div>
+                        </div>
+                        <div class="bar-value">${r.total} bookings</div>
+                    </div>
+                `).join('');
+            }
+
+            // Recent
+            const recentRes = await fetch('/api/admin/analytics/recent');
+            const recentData = await recentRes.json();
+            const recentDiv = document.getElementById('recentBookingsList');
+            if (recentData.success && recentData.recent.length > 0) {
+                recentDiv.innerHTML = recentData.recent.map(r => `
+                    <div class="recent-item">
+                        <div class="recent-info">
+                            <strong>${r.booked_by}</strong> 
+                            <span class="badge badge-${r.user_type === 'Student' ? 'pending' : 'approved'}" style="font-size:10px;">${r.user_type}</span>
+                            <br><small style="color:#888;">${r.resource_name}</small>
+                        </div>
+                        <span class="badge badge-${r.status.toLowerCase()}">${r.status}</span>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // ==================== BOOKINGS ====================
+
+        async function loadBookings() {
+            const res = await fetch('/api/admin/bookings');
+            const data = await res.json();
+            const tbody = document.getElementById('bookingsTable');
+
+            if (data.success && data.bookings.length > 0) {
+                tbody.innerHTML = data.bookings.map(b => `
+                    <tr>
+                        <td>${b.booking_id}</td>
+                        <td><span class="badge badge-${b.user_type === 'Student' ? 'pending' : 'approved'}" style="font-size:10px;">${b.user_type}</span></td>
+                        <td>${b.booked_by_name}<br><small style="color:#888;">${b.booked_by_email}</small>
+                            ${b.department ? '<br><small style="color:#666;">Dept: ' + b.department + '</small>' : ''}</td>
+                        <td>${b.resource_name}<br><small style="color:#888;">${b.location}</small></td>
+                        <td>${new Date(b.booking_date).toLocaleDateString()}</td>
+                        <td>${b.time_slot}</td>
+                        <td>${b.purpose}</td>
+                        <td><span class="badge badge-${b.status.toLowerCase()}">${b.status}</span></td>
+                        <td>
+                            ${b.status === 'Pending' ? `
+                                <input type="text" class="remark-input" id="remark-${b.booking_id}" placeholder="Add remark (optional)">
+                                <div class="action-buttons">
+                                    <button class="btn btn-approve" onclick="updateBooking(${b.booking_id}, 'Approved')">Approve</button>
+                                    <button class="btn btn-reject" onclick="updateBooking(${b.booking_id}, 'Rejected')">Reject</button>
+                                </div>
+                            ` : `<span style="color:#888; font-size:13px;">${b.admin_remark || 'No remark'}</span>`}
+                        </td>
+                    </tr>
+                `).join('');
+            } else {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:30px; color:#888;">No bookings found</td></tr>';
+            }
+        }
+
+        // Approve / Reject Booking
+        async function updateBooking(bookingId, status) {
+            const remarkInput = document.getElementById(`remark-${bookingId}`);
+            const remark = remarkInput ? remarkInput.value.trim() : '';
+
+            const res = await fetch(`/api/admin/booking/${bookingId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status, admin_remark: remark, admin_id: admin.admin_id })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                loadBookings();
+            } else {
+                alert('Failed to update booking');
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('admin');
+            window.location.href = 'index.html';
+        }
+
+        // Initialize
+        loadAnalytics();
+    </script>
+
+</body>
+</html>

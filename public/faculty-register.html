@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faculty Register - Campus Booking</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <nav class="navbar">
+        <a href="index.html" class="logo">📚 Campus Booking</a>
+        <div class="nav-links">
+            <a href="index.html">Home</a>
+            <a href="faculty-login.html">Login</a>
+        </div>
+    </nav>
+
+    <div class="auth-container">
+        <div class="auth-box" style="max-width:500px;">
+            <h2>Faculty Registration</h2>
+            <div id="alert-box"></div>
+            <form id="registerForm">
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" id="full_name" placeholder="Enter your full name" required>
+                </div>
+                <div class="form-group">
+                    <label>Employee ID</label>
+                    <input type="text" id="employee_id" placeholder="e.g. EMP2024001" required>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="email" placeholder="Enter your official email" required>
+                </div>
+                <div class="form-group">
+                    <label>Phone Number</label>
+                    <input type="tel" id="phone" placeholder="Enter 10-digit phone number" pattern="[0-9]{10}" required>
+                </div>
+                <div class="form-group">
+                    <label>Department</label>
+                    <select id="department" required>
+                        <option value="">-- Select Department --</option>
+                        <option value="Computer Science">Computer Science</option>
+                        <option value="Electronics">Electronics</option>
+                        <option value="Mechanical">Mechanical</option>
+                        <option value="Civil">Civil</option>
+                        <option value="Electrical">Electrical</option>
+                        <option value="Mathematics">Mathematics</option>
+                        <option value="Physics">Physics</option>
+                        <option value="Chemistry">Chemistry</option>
+                        <option value="Information Technology">Information Technology</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Designation</label>
+                    <select id="designation" required>
+                        <option value="">-- Select Designation --</option>
+                        <option value="Professor">Professor</option>
+                        <option value="Associate Professor">Associate Professor</option>
+                        <option value="Assistant Professor">Assistant Professor</option>
+                        <option value="Lecturer">Lecturer</option>
+                        <option value="Lab Instructor">Lab Instructor</option>
+                        <option value="HOD">HOD</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="password" placeholder="Create a password" minlength="6" required>
+                </div>
+                <button type="submit" class="btn btn-navy">Create Account</button>
+            </form>
+            <p class="link-text">Already have an account? <a href="faculty-login.html">Login here</a></p>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const body = {
+                full_name: document.getElementById('full_name').value,
+                employee_id: document.getElementById('employee_id').value,
+                email: document.getElementById('email').value,
+                phone: document.getElementById('phone').value,
+                department: document.getElementById('department').value,
+                designation: document.getElementById('designation').value,
+                password: document.getElementById('password').value
+            };
+
+            const res = await fetch('/api/faculty/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                document.getElementById('alert-box').innerHTML = 
+                    `<div class="alert alert-success">${data.message}! <a href="faculty-login.html">Login now</a></div>`;
+                document.getElementById('registerForm').reset();
+            } else {
+                document.getElementById('alert-box').innerHTML = 
+                    `<div class="alert alert-error">${data.message}</div>`;
+            }
+        });
+    </script>
+
+</body>
+</html>
