@@ -75,32 +75,48 @@
     </div>
 
     <script>
-        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+        const form = document.getElementById('registerForm');
+        const submitBtn = form.querySelector('button[type="submit"]');
+
+        form.addEventListener('submit', async (e) => {
             e.preventDefault();
+            const alertBox = document.getElementById('alert-box');
+            alertBox.innerHTML = '';
+
             const body = {
-                full_name: document.getElementById('full_name').value,
-                employee_id: document.getElementById('employee_id').value,
-                email: document.getElementById('email').value,
-                phone: document.getElementById('phone').value,
+                full_name: document.getElementById('full_name').value.trim(),
+                employee_id: document.getElementById('employee_id').value.trim(),
+                email: document.getElementById('email').value.trim(),
+                phone: document.getElementById('phone').value.trim(),
                 department: document.getElementById('department').value,
                 designation: document.getElementById('designation').value,
                 password: document.getElementById('password').value
             };
 
-            const res = await fetch('/api/faculty/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            });
-            const data = await res.json();
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Creating Account...';
 
-            if (data.success) {
-                document.getElementById('alert-box').innerHTML = 
-                    `<div class="alert alert-success">${data.message}! <a href="faculty-login.html">Login now</a></div>`;
-                document.getElementById('registerForm').reset();
-            } else {
-                document.getElementById('alert-box').innerHTML = 
-                    `<div class="alert alert-error">${data.message}</div>`;
+            try {
+                const res = await fetch('/api/faculty/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    alertBox.innerHTML = 
+                        `<div class="alert alert-success">${data.message}! <a href="faculty-login.html">Login now</a></div>`;
+                    form.reset();
+                } else {
+                    alertBox.innerHTML = 
+                        `<div class="alert alert-error">${data.message || 'Registration failed'}</div>`;
+                }
+            } catch (err) {
+                alertBox.innerHTML = `<div class="alert alert-error">Unable to connect to server. Please check your database settings.</div>`;
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Create Account';
             }
         });
     </script>

@@ -102,44 +102,56 @@
 
         // Load Resources (Student-only)
         async function loadResources() {
-            const res = await fetch('/api/student/resources');
-            const data = await res.json();
-            if (data.success) {
-                const select = document.getElementById('resource_id');
-                data.resources.forEach(r => {
-                    select.innerHTML += `<option value="${r.resource_id}">${r.resource_name} (${r.resource_type}) - Capacity: ${r.capacity}</option>`;
-                });
+            try {
+                const res = await fetch('/api/student/resources');
+                const data = await res.json();
+                if (data.success) {
+                    const select = document.getElementById('resource_id');
+                    select.innerHTML = '<option value="">-- Choose Resource --</option>';
+                    data.resources.forEach(r => {
+                        select.innerHTML += `<option value="${r.resource_id}">${r.resource_name} (${r.resource_type}) - Capacity: ${r.capacity}</option>`;
+                    });
+                }
+            } catch (err) {
+                console.error('Failed to load resources:', err);
             }
         }
 
         // Load Bookings
         async function loadBookings() {
-            const res = await fetch(`/api/student/bookings/${student.student_id}`);
-            const data = await res.json();
             const tbody = document.getElementById('bookingsTable');
+            try {
+                const res = await fetch(`/api/student/bookings/${student.student_id}`);
+                const data = await res.json();
 
-            if (data.success && data.bookings.length > 0) {
-                tbody.innerHTML = data.bookings.map(b => `
-                    <tr>
-                        <td>${b.resource_name}</td>
-                        <td>${b.resource_type}</td>
-                        <td>${b.location}</td>
-                        <td>${new Date(b.booking_date).toLocaleDateString()}</td>
-                        <td>${b.time_slot}</td>
-                        <td>${b.purpose}</td>
-                        <td>${b.num_attendees}</td>
-                        <td><span class="badge badge-${b.status.toLowerCase()}">${b.status}</span></td>
-                        <td>${b.admin_remark || '-'}</td>
-                    </tr>
-                `).join('');
-            } else {
-                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:30px; color:#888;">No bookings yet</td></tr>';
+                if (data.success && data.bookings.length > 0) {
+                    tbody.innerHTML = data.bookings.map(b => `
+                        <tr>
+                            <td>${b.resource_name}</td>
+                            <td>${b.resource_type}</td>
+                            <td>${b.location}</td>
+                            <td>${new Date(b.booking_date).toLocaleDateString()}</td>
+                            <td>${b.time_slot}</td>
+                            <td>${b.purpose}</td>
+                            <td>${b.num_attendees}</td>
+                            <td><span class="badge badge-${b.status.toLowerCase()}">${b.status}</span></td>
+                            <td>${b.admin_remark || '-'}</td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:30px; color:#888;">No bookings yet</td></tr>';
+                }
+            } catch (err) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:30px; color:#c00;">Failed to load bookings from database.</td></tr>';
             }
         }
 
         // Submit Booking
         document.getElementById('bookingForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            const alertBox = document.getElementById('booking-alert');
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+
             const body = {
                 student_id: student.student_id,
                 resource_id: document.getElementById('resource_id').value,
@@ -149,24 +161,32 @@
                 num_attendees: document.getElementById('num_attendees').value
             };
 
-            const res = await fetch('/api/student/booking', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            });
-            const data = await res.json();
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Submitting...';
 
-            if (data.success) {
-                document.getElementById('booking-alert').innerHTML = 
-                    `<div class="alert alert-success">${data.message}</div>`;
-                document.getElementById('bookingForm').reset();
-                loadBookings();
-            } else {
-                document.getElementById('booking-alert').innerHTML = 
-                    `<div class="alert alert-error">${data.message}</div>`;
+            try {
+                const res = await fetch('/api/student/booking', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    alertBox.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
+                    document.getElementById('bookingForm').reset();
+                    loadBookings();
+                } else {
+                    alertBox.innerHTML = `<div class="alert alert-error">${data.message}</div>`;
+                }
+            } catch (err) {
+                alertBox.innerHTML = `<div class="alert alert-error">Booking request failed. Please check your database connection.</div>`;
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit Booking';
             }
 
-            setTimeout(() => { document.getElementById('booking-alert').innerHTML = ''; }, 3000);
+            setTimeout(() => { alertBox.innerHTML = ''; }, 4000);
         });
 
         function logout() {

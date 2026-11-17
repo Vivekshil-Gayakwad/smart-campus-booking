@@ -37,24 +37,39 @@
     </div>
 
     <script>
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        const form = document.getElementById('loginForm');
+        const submitBtn = form.querySelector('button[type="submit"]');
+
+        form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const email = document.getElementById('email').value;
+            const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
+            const alertBox = document.getElementById('alert-box');
 
-            const res = await fetch('/api/student/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
-            });
-            const data = await res.json();
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Logging in...';
+            alertBox.innerHTML = '';
 
-            if (data.success) {
-                localStorage.setItem('student', JSON.stringify(data.student));
-                window.location.href = 'student-dashboard.html';
-            } else {
-                document.getElementById('alert-box').innerHTML = 
-                    `<div class="alert alert-error">${data.message}</div>`;
+            try {
+                const res = await fetch('/api/student/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    localStorage.setItem('student', JSON.stringify(data.student));
+                    window.location.href = 'student-dashboard.html';
+                } else {
+                    alertBox.innerHTML = `<div class="alert alert-error">${data.message || 'Login failed'}</div>`;
+                }
+            } catch (err) {
+                alertBox.innerHTML = `<div class="alert alert-error">Unable to connect to server. If deployed on Render, please check your database connection in Environment Variables.</div>`;
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Login';
             }
         });
     </script>
