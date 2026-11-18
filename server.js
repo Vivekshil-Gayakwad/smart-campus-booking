@@ -43,9 +43,7 @@ if (process.env.DB_SSL === 'true' || (process.env.DB_HOST && process.env.DB_HOST
 
 const db = mysql.createPool(dbConfig);
 
-const initDb = require('./database/init_db');
-
-// Verify connection and auto-initialize tables
+// Verify database connection
 db.getConnection((err, connection) => {
     if (err) {
         console.error('Database connection failed:', err.message);
@@ -54,14 +52,6 @@ db.getConnection((err, connection) => {
     }
     console.log('Connected to MySQL database successfully.');
     connection.release();
-
-    // Auto-initialize tables and seed data if missing
-    db.query("SHOW TABLES LIKE 'resources';", (err, rows) => {
-        if (!err && (!rows || rows.length === 0)) {
-            console.log('No existing tables found. Initializing database schema and seed data...');
-            initDb(db);
-        }
-    });
 });
 
 // Health check endpoint
